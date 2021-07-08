@@ -1,5 +1,5 @@
 # prob_model_sampling
-The purpose of this project is to demonstrate the implementation and results of a probabilistic model.
+The purpose of this project is to demonstrate the implementation and results of the optimization of a probabilistic model.
 Since this model has two continuous latent variables, multiple quantities can be inferred by bayesian inference and 
 marginalization.
 
