@@ -23,23 +23,6 @@ def show_data(data: List[torch.tensor], variable_name: str="x") -> None:
     pass
 
 
-def show_image_data_flat(data: List[torch.tensor]) -> None:
-    """
-    Function to display 2D shapes (set of 2D points).
-    :param data: Set of 2D points
-    :return:
-    """
-    cols = rows = int((1.0 * len(data)) ** 0.5)
-    fig = plt.figure(figsize=(2 * cols, 2 * rows))
-    for i, element in enumerate(data[:cols*rows]):
-        ax = fig.add_subplot(cols, rows, i+1)
-        ax.set_box_aspect(1)
-        ax.set_axis_off()
-        element = element.reshape((28, 28))
-        ax.imshow(element, cmap="gray")
-    pass
-
-
 def scatter_2d_data_and_subset(data: np.array, subset: np.array) -> None:
     """
     Visualize a set of 2D points in x domain and a subset, which is colored differently and labeled

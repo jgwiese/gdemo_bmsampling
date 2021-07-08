@@ -6,16 +6,6 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 PI = torch.tensor(3.14159265359)
 
 
-def multivariate_binomial_log_probability(elements: torch.tensor, params: torch.tensor, device: str) -> torch.tensor:
-    log_probabilities = torch.log(params) @ elements.T + torch.log(1.0 - params) @ (1.0 - elements.T)
-    return log_probabilities.T
-
-
-def multivariate_binomial_probability(elements: torch.tensor, params: torch.tensor, device: str) -> torch.tensor:
-    probabilities = torch.exp(multivariate_binomial_log_probability(elements=elements, params=params, device=device))
-    return probabilities
-
-
 def multivariate_normal_log_probability(
         elements: torch.tensor,
         means: torch.tensor,
@@ -70,24 +60,11 @@ class ShapeModel(torch.nn.Module):
         self.z_dim = z_dim
         self.w_dim = w_dim
         self.register_parameter(name='log_std_', param=torch.nn.Parameter(torch.log(torch.tensor(0.01))))
-        #self.log_std_ = torch.tensor([0.0])
 
         self.l1_dim = 16
         self.l2_dim = 16
         self.l3_dim = 2
-
         parameter_count = (self.z_dim + 1) * self.l1_dim + (self.l1_dim + 1) * self.l2_dim + (self.l2_dim + 1) * self.l3_dim
-
-        """
-        self.f_explicit = torch.nn.Sequential(
-            torch.nn.Linear(self.z_dim, 16),
-            torch.nn.ELU(),
-            torch.nn.Linear(16, 16),
-            torch.nn.ELU(),
-            torch.nn.Linear(16, 2),
-            torch.nn.Sigmoid()
-        )
-        """
 
         self.g = torch.nn.Sequential(
             torch.nn.Linear(self.w_dim, int(0.25 * parameter_count)),
@@ -141,7 +118,6 @@ class ShapeModel(torch.nn.Module):
         z = latent_z.sample(torch.Size([size])).to(self.device)
         with torch.no_grad():
             means = self.f(z, w)
-            #means = self.f_explicit(z)
         conditional = torch.distributions.multivariate_normal.MultivariateNormal(
             loc=means,
             covariance_matrix=torch.exp(self.log_std_) * torch.eye(2).repeat(size, 1, 1).to(self.device)
@@ -172,7 +148,6 @@ class ShapeModel(torch.nn.Module):
         :return:
         """
         means = self.f(z, w)
-        #means = self.f_explicit(z)
         log_likelihood = multivariate_normal_log_probability(
             elements=X,
             means=means,
@@ -228,13 +203,6 @@ class ShapeModel(torch.nn.Module):
         :param w: Samples from latent space w
         :return:
         """
-        """
-        with torch.no_grad():
-            posterior = torch.exp(self.log_posterior(X, z, w))
-        log_likelihood = self.log_likelihood(X, z, w)
-        expected_log_likelihood = (posterior.T * log_likelihood).sum(-1) / len(z)
-        """
-
         log_likelihood = self.log_likelihood(X, z, w)
 
         with torch.no_grad():
@@ -359,13 +327,6 @@ class SetModel(torch.nn.Module):
         :param z: Samples from latent distribution z
         :return:
         """
-        """
-        with torch.no_grad():
-            posterior = torch.exp(self.log_posterior(D, w, z))
-        log_likelihood = self.log_likelihood(D, w, z)
-        expected_log_likelihood = (posterior.T * log_likelihood).sum(-1) / len(w)
-        """
-
         log_likelihood = self.log_likelihood(D, w, z)
 
         with torch.no_grad():
@@ -424,8 +385,8 @@ def optimize(
         w = latent_w.sample(torch.Size([sample_size_w])).to(model.device)
 
         optimizer.zero_grad()
-        expected_value = -model.expected_log_likelihood(batch, w, z)
-        expected_value.backward()
+        objective = -model.expected_log_likelihood(batch, w, z)
+        objective.backward()
         optimizer.step()
 
         # hacky way to "anneal" variance of conditional distribution to the final value
@@ -436,7 +397,7 @@ def optimize(
         # report, backup model and optimizer states
         with torch.no_grad():
             if epoch % report_at == 0 or epoch == epochs - 1:
-                print(epoch, "expectation:", -expected_value, "| model variance:", model.shape_model.log_std_.data)
+                print(epoch, "objective:", -objective, "| model variance:", model.shape_model.log_std_.data)
                 torch.save(model.state_dict(), "model/model_{}.pt".format(epoch))
                 torch.save(optimizer.state_dict(), "model/optimizer_{}.pt".format(epoch))
 
