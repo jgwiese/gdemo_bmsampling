@@ -15,3 +15,4 @@ The maximal values match to the locations of the shapes on the left side.
 
 For basic usage and more functionality demonstration have a look at the 
 [jupyter notebook](https://github.com/jgwiese/prob_model_sampling/blob/main/learning.ipynb).
+You can also contact me for details regarding the model and the optimization objective derivation. 
